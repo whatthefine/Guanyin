@@ -1,1 +1,685 @@
-test
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拉霸遊戲</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Tone.js 庫用於音效 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent scrolling */
+        }
+        .slot-machine-container {
+            background-color: #ff3333; /* Red background from image */
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 95%; /* Fluid width */
+            max-width: 900px; /* Max width for larger screens */
+            box-sizing: border-box;
+        }
+        .reels-wrapper {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            width: 100%;
+            perspective: 1000px; /* For 3D effect during spin */
+        }
+        .reel {
+            background-color: #fff;
+            border: 5px solid #ffcc00; /* Yellow border from image */
+            border-radius: 10px;
+            width: 30%; /* Fluid width for reels */
+            max-width: 150px; /* Max width for individual reel */
+            height: 200px; /* Fixed height to show multiple items (3 items * 65px + padding) */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 4em;
+            font-weight: bold;
+            overflow: hidden; /* Crucial for clipping the strip */
+            position: relative; /* For absolute positioning of reel-strip and indicators */
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        /* Indicators for the center line */
+        .reel::before, .reel::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            z-index: 10;
+        }
+        .reel::before {
+            border-width: 10px 10px 10px 0;
+            border-color: transparent #000 transparent transparent; /* Black left-pointing triangle */
+            left: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .reel::after {
+            border-width: 10px 0 10px 10px;
+            border-color: transparent transparent transparent #000; /* Black right-pointing triangle */
+            right: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .reel-strip {
+            position: absolute;
+            width: 100%;
+            top: 0; /* Ensure it starts at the top of the reel */
+            left: 0;
+            display: flex;
+            flex-direction: column; /* Stack items vertically */
+            will-change: transform; /* Performance hint */
+        }
+        .reel-item {
+            width: 100%;
+            height: 65px; /* Each individual item's height */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3rem; /* Emojis will scale */
+            box-sizing: border-box;
+            padding: 5px 0; /* Add padding for visual separation */
+            flex-shrink: 0; /* Prevent items from shrinking */
+        }
+
+        .glow {
+            box-shadow: 0 0 20px 5px #ffd700, 0 0 30px 10px #ffcc00;
+            animation: glow 1.5s infinite alternate;
+        }
+
+        @keyframes glow {
+            from { box-shadow: 0 0 20px 5px #ffd700, 0 0 30px 10px #ffcc00; }
+            to { box-shadow: 0 0 30px 8px #ffcc00, 0 0 40px 15px #ffd700; }
+        }
+
+        /* Shake animation for losing */
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            20% { transform: translateX(-5px); }
+            40% { transform: translateX(5px); }
+            60% { transform: translateX(-3px); }
+            80% { transform: translateX(3px); }
+            100% { transform: translateX(0); }
+        }
+
+        .shake {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        .spin-button, .bet-button {
+            background-color: #4CAF50; /* Green */
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.5em;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease, box-shadow 0.3s ease;
+            box-shadow: 0 5px #388E3C;
+        }
+        .spin-button:hover, .bet-button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 7px #388E3C;
+        }
+        .spin-button:active, .bet-button:active {
+            background-color: #3e8e41;
+            transform: translateY(3px);
+            box-shadow: 0 2px #388E3C;
+        }
+        .spin-button:disabled, .bet-button:disabled {
+            background-color: #cccccc;
+            box-shadow: 0 5px #aaaaaa;
+            cursor: not-allowed;
+        }
+        .score-board {
+            background-color: #fff;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 300px;
+        }
+        .message-box {
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            text-align: center;
+            display: none; /* Hidden by default */
+        }
+        .message-box button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .bet-multiplier-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .bet-multiplier-container span {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+        .bet-button.active {
+            background-color: #e0ac1a; /* Active yellow */
+            box-shadow: 0 5px #c09015;
+        }
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .slot-machine-container {
+                padding: 15px;
+                gap: 15px;
+            }
+            .reels-wrapper {
+                flex-direction: row; /* Keep reels in a row even on small screens */
+                gap: 10px;
+            }
+            .reel {
+                width: 30%; /* Ensure reels don't get too small */
+                height: 150px;
+                font-size: 2.5em;
+            }
+            .spin-button, .bet-button {
+                padding: 12px 25px;
+                font-size: 1.2em;
+            }
+            .score-board {
+                font-size: 1em;
+                padding: 10px 20px;
+            }
+            .bet-multiplier-container {
+                flex-wrap: wrap; /* Allow wrapping on small screens */
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="slot-machine-container">
+        <!-- 顯示玩家分數的計分板 -->
+        <div class="score-board">
+            分數: <span id="score">1000</span>
+        </div>
+
+        <!-- 遊戲轉輪區域 -->
+        <div class="reels-wrapper">
+            <div class="reel" id="reel1">
+                <div class="reel-strip"></div>
+            </div>
+            <div class="reel" id="reel2">
+                <div class="reel-strip"></div>
+            </div>
+            <div class="reel" id="reel3">
+                <div class="reel-strip"></div>
+            </div>
+        </div>
+
+        <!-- 旋轉按鈕 -->
+        <button id="spinButton" class="spin-button">旋轉</button>
+
+        <!-- 壓注倍數選擇 -->
+        <div class="bet-multiplier-container">
+            <span>壓注倍數:</span>
+            <button class="bet-button active" data-multiplier="1">1X</button>
+            <button class="bet-button" data-multiplier="2">2X</button>
+            <button class="bet-button" data-multiplier="5">5X</button>
+        </div>
+
+        <!-- 遊戲結果訊息 -->
+        <div class="score-board" id="resultMessage">
+            點擊旋轉開始遊戲！
+        </div>
+    </div>
+
+    <!-- 訊息框（替代 alert） -->
+    <div id="messageBox" class="message-box">
+        <p id="messageContent"></p>
+        <button onclick="hideMessageBox()">確定</button>
+    </div>
+
+    <script>
+        // 定義八種物品及其對應的圖示
+        const items = ['7️⃣', '🔔', '🍒', '🍊', '🍉', '👑', '🏆', '💰']; // 7, 鈴鐺, 櫻桃, 橘子, 西瓜, 皇冠, 獎盃, 錢袋
+
+        // 定義不同組合的分數規則
+        const winConditions = {
+            '7️⃣7️⃣7️⃣': { score: 5000, message: '🎉 恭喜！超級大獎！ 🎉' }, // 三個7，最高分
+            '👑👑👑': { score: 3500, message: '皇冠三連！' },
+            '🏆🏆🏆': { score: 3000, message: '獎盃三連！' },
+            '🔔🔔🔔': { score: 2500, message: '鈴鐺三連！' },
+            '🍒🍒🍒': { score: 2000, message: '櫻桃三連！' },
+            '🍊🍊🍊': { score: 1500, message: '橘子三連！' },
+            '🍉🍉🍉': { score: 1000, message: '西瓜三連！' },
+            '💰💰💰': { score: 500, message: '錢袋三連！' },
+            '7️⃣7️⃣': { score: 200, message: '雙7，不錯喔！', partial: true }, // 部分匹配，如兩個7
+            '7️⃣': { score: 50, message: '一個7，聊勝於無！', partial: true }
+        };
+
+        const reels = [
+            document.getElementById('reel1'),
+            document.getElementById('reel2'),
+            document.getElementById('reel3')
+        ];
+        const spinButton = document.getElementById('spinButton');
+        const betButtons = document.querySelectorAll('.bet-button'); // 壓注倍數按鈕
+        const scoreDisplay = document.getElementById('score');
+        const resultMessage = document.getElementById('resultMessage');
+        const messageBox = document.getElementById('messageBox');
+        const messageContent = document.getElementById('messageContent');
+
+        let currentScore = 1000;
+        let isSpinning = false;
+        const baseSpinCost = 100; // 每次旋轉的基本花費
+        let currentBetMultiplier = 1; // 當前壓注倍數
+
+        // --- Tone.js 音效設定 ---
+        const spinStartSynth = new Tone.Synth().toDestination();
+        spinStartSynth.oscillator.type = "sine";
+        spinStartSynth.envelope.attack = 0.05;
+        spinStartSynth.envelope.decay = 0.1;
+        spinStartSynth.envelope.sustain = 0.1;
+        spinStartSynth.envelope.release = 0.1;
+
+        const reelStopSynth = new Tone.Synth().toDestination();
+        reelStopSynth.oscillator.type = "square";
+        reelStopSynth.envelope.attack = 0.01;
+        reelStopSynth.envelope.decay = 0.05;
+        reelStopSynth.envelope.sustain = 0.05;
+        reelStopSynth.envelope.release = 0.1;
+
+        const winSynth = new Tone.PolySynth(Tone.Synth).toDestination();
+        winSynth.set({
+            oscillator: { type: "triangle" },
+            envelope: {
+                attack: 0.02,
+                decay: 0.2,
+                sustain: 0.1,
+                release: 0.3
+            }
+        });
+
+        const loseSynth = new Tone.Synth().toDestination();
+        loseSynth.oscillator.type = "sawtooth";
+        loseSynth.envelope.attack = 0.01;
+        loseSynth.envelope.decay = 0.2;
+        loseSynth.envelope.sustain = 0.01;
+        loseSynth.envelope.release = 0.2;
+
+
+        // 播放旋轉開始音效
+        function playSpinStartSound() {
+            spinStartSynth.triggerAttackRelease("C4", "16n");
+        }
+
+        // 播放轉輪停止音效
+        function playReelStopSound() {
+            reelStopSynth.triggerAttackRelease("D5", "16n");
+        }
+
+        // 播放中獎音效
+        function playWinSound() {
+            winSynth.triggerAttackRelease(["E5", "G5", "C6"], "8n");
+        }
+
+        // 播放未中獎音效
+        function playLoseSound() {
+            loseSynth.triggerAttackRelease("C2", "4n");
+        }
+
+        // 顯示訊息框
+        function showMessageBox(message) {
+            messageContent.textContent = message;
+            messageBox.style.display = 'block';
+        }
+
+        // 隱藏訊息框
+        function hideMessageBox() {
+            messageBox.style.display = 'none';
+        }
+
+        // 初始化每個轉輪的顯示項目
+        function initializeReels() {
+            reels.forEach(reelElement => {
+                const reelStrip = reelElement.querySelector('.reel-strip');
+                const itemHeight = 65; // Fixed item height
+                const itemsPerCycle = items.length; // 8 unique items
+                // We'll create more items than just 3 to ensure smooth looping without jumps.
+                // This allows for continuous scroll, even if only 3 are "active" at any given time for scoring.
+                const totalVisualItemsInStrip = itemsPerCycle * 3; // Enough to cycle through all unique items multiple times
+
+                reelStrip.innerHTML = ''; // Clear existing items
+
+                for (let i = 0; i < totalVisualItemsInStrip; i++) {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.classList.add('reel-item');
+                    itemDiv.style.height = `${itemHeight}px`;
+                    itemDiv.textContent = items[i % itemsPerCycle]; // Cycle through the base items
+                    reelStrip.appendChild(itemDiv);
+                }
+                
+                // Initial position to center a random item (visually, the 2nd item in the 3-item view)
+                const centerOffsetInReel = (reelElement.clientHeight / 2) - (itemHeight / 2); // Y for the center item's top edge
+                // To center reelItems[1] (which is the middle item in a 3-item static view)
+                // the strip's translateY should be: `centerOffsetInReel - (1 * itemHeight)`.
+                // Let's find a random starting point in the strip that aligns an item to the center.
+                const initialRandomIndex = Math.floor(Math.random() * itemsPerCycle);
+                // Position the strip so that 'initialRandomIndex' is conceptually centered.
+                // This means the top of the item with `initialRandomIndex` should be at `centerOffsetInReel`.
+                // So the strip should translate by `centerOffsetInReel - (initialRandomIndex * itemHeight)`
+                // But we also need to account for which of the `totalVisualItemsInStrip` items is visible.
+                // A simpler initial setup: ensure the middle item is always randomly chosen and centered.
+                // Let's set the initial translateY so reelItems[1] is centered, and then update its content.
+                let initialTranslateY = -itemHeight + centerOffsetInReel; // This makes reelItems[1] centered
+                reelStrip.style.transition = 'none';
+                reelStrip.style.transform = `translateY(${initialTranslateY}px)`;
+                reelStrip.dataset.offset = initialTranslateY; // Store this for consistency
+
+                // Manually set the content of the three visible items
+                reelStrip.children[0].textContent = items[(initialRandomIndex - 1 + itemsPerCycle) % itemsPerCycle];
+                reelStrip.children[1].textContent = items[initialRandomIndex]; // Center item
+                reelStrip.children[2].textContent = items[(initialRandomIndex + 1) % itemsPerCycle];
+            });
+        }
+
+        // 旋轉轉輪的函數 (滾輪動畫)
+        function spinReel(reelElement, finalItem, delay) {
+            return new Promise(resolve => {
+                const reelStrip = reelElement.querySelector('.reel-strip');
+                const reelItems = Array.from(reelStrip.children);
+                const itemHeight = reelItems[0].clientHeight;
+                const itemsPerCycle = items.length; // 8 unique items
+                const totalVisualItemsInStrip = reelItems.length; // E.g., 24 (itemsPerCycle * 3)
+
+                let animationFrameId = null;
+                let currentTranslateY = parseFloat(reelStrip.dataset.offset);
+                let lastFrameTime = performance.now();
+                let startTime = performance.now();
+
+                const spinSpeedPxPerSec = 2000; // Fast spin speed (pixels per second)
+                const stopTransitionDuration = 1000; // Final smooth stop animation duration (ms)
+                const fastSpinDuration = delay - stopTransitionDuration; // Rapid scrolling duration
+
+                // --- Prepare Final Stop Sequence ---
+                const finalItemIndexInItems = items.indexOf(finalItem); // Index of the final item in the 'items' array
+                const centerOffsetInReel = (reelElement.clientHeight / 2) - (itemHeight / 2); // Y for the center item's top edge
+
+                // We need to ensure that the content of the reelItems aligns correctly for the stop.
+                // reelItems[0] = item_before_final
+                // reelItems[1] = final_item
+                // reelItems[2] = item_after_final
+                const prevItem = items[(finalItemIndexInItems - 1 + itemsPerCycle) % itemsPerCycle];
+                const nextItem = items[(finalItemIndexInItems + 1) % itemsPerCycle];
+
+                // --- Fast Spin Loop ---
+                const animateFastSpin = (currentTime) => {
+                    const deltaTime = (currentTime - lastFrameTime) / 1000;
+                    lastFrameTime = currentTime;
+                    const elapsedTime = currentTime - startTime;
+
+                    if (elapsedTime < fastSpinDuration) {
+                        currentTranslateY += spinSpeedPxPerSec * deltaTime; // Move strip downwards (Y increases)
+
+                        // Wrap logic: When currentTranslateY moves past the height of one full item,
+                        // reset its translateY to simulate continuous scrolling.
+                        // We reset by one item height and update contents.
+                        // This makes the animation appear continuous without adding/removing DOM.
+                        if (currentTranslateY >= (parseFloat(reelStrip.dataset.offset) + itemHeight)) {
+                            currentTranslateY -= itemHeight; // Shift the 'window' by one item height
+                            
+                            // Cycle the content of reelItems
+                            // This gives the illusion of new random items appearing
+                            const firstItemContent = reelItems[0].textContent;
+                            reelItems[0].textContent = reelItems[1].textContent;
+                            reelItems[1].textContent = reelItems[2].textContent;
+                            reelItems[2].textContent = items[Math.floor(Math.random() * itemsPerCycle)]; // New random item at the bottom
+                            
+                            reelStrip.style.transition = 'none'; // Instant snap back
+                        }
+                        
+                        reelStrip.style.transform = `translateY(${currentTranslateY}px)`;
+                        animationFrameId = requestAnimationFrame(animateFastSpin);
+
+                    } else {
+                        // --- Stopping Phase ---
+                        cancelAnimationFrame(animationFrameId);
+                        playReelStopSound();
+
+                        // Now, we need to set the contents for the final stop BEFORE the transition.
+                        // The elements in reelItems are fixed. We need to set them to
+                        // [item_before_final, final_item, item_after_final]
+                        reelItems[0].textContent = prevItem;
+                        reelItems[1].textContent = finalItem;
+                        reelItems[2].textContent = nextItem;
+
+                        // Calculate the final target Y for reelItems[1] to be perfectly centered.
+                        // The desired position for the middle item (index 1) to be centered is `-itemHeight + centerOffsetInReel`.
+                        let finalTargetTranslateY = -itemHeight + centerOffsetInReel; // Base target Y for the strip
+
+                        // Adjust `finalTargetTranslateY` to ensure it continues downward motion
+                        // and lands precisely on the correct item after passing through some cycles.
+                        // We need to find the `finalTargetTranslateY` that is:
+                        // 1. Visually below `currentTranslateY` (i.e., `finalTargetTranslateY > currentTranslateY`).
+                        // 2. Aligns `reelItems[1]` to the center.
+                        // 3. Is a multiple of `itemHeight`.
+                        
+                        // Calculate how many full items we need to scroll from current position to reach target.
+                        // We need to ensure a downward motion that's at least `N` full items.
+                        const minimumScrollItems = itemsPerCycle * 1; // At least one full unique item cycle scroll
+                        let currentLogicalItemOffset = Math.round((currentTranslateY - centerOffsetInReel) / itemHeight);
+                        let targetLogicalItemOffset = -1; // This is the index of reelItems[1] relative to current window
+                        
+                        // Calculate a target Y that is a multiple of `itemHeight` and positions `reelItems[1]` centrally.
+                        // This `finalTargetTranslateY` needs to be an integer multiple of `itemHeight` from a base.
+                        finalTargetTranslateY = -itemHeight + centerOffsetInReel; // This is the base for centering reelItems[1]
+
+                        // Now, ensure that `finalTargetTranslateY` is significantly below `currentTranslateY` to show deceleration.
+                        while (finalTargetTranslateY < currentTranslateY - (itemHeight * totalVisualItemsInStrip * 1.5)) { // Ensure enough distance for smooth stop
+                            finalTargetTranslateY += (itemHeight * totalVisualItemsInStrip);
+                        }
+                        
+                        reelStrip.style.transition = `transform ${stopTransitionDuration / 1000}s cubic-bezier(0.25, 0.1, 0.25, 1)`;
+                        reelStrip.style.transform = `translateY(${finalTargetTranslateY}px)`;
+
+                        reelStrip.addEventListener('transitionend', function handler() {
+                            reelStrip.removeEventListener('transitionend', handler);
+                            reelStrip.style.transition = 'none'; 
+                            
+                            // Normalize the position to prevent translateY from growing infinitely
+                            const normalizedY = -itemHeight + centerOffsetInReel;
+                            reelStrip.style.transform = `translateY(${normalizedY}px)`;
+                            reelStrip.dataset.offset = normalizedY;
+
+                            // After normalization, update the contents of ALL items for the next spin's initial state
+                            // This ensures the whole strip has random content for the next fast spin.
+                            for (let i = 0; i < totalVisualItemsInStrip; i++) {
+                                reelItems[i].textContent = items[Math.floor(Math.random() * itemsPerCycle)];
+                            }
+                            
+                            resolve(); // Resolve the promise
+                        }, { once: true });
+                    }
+                };
+
+                animationFrameId = requestAnimationFrame(animateFastSpin);
+            });
+        }
+
+
+        // 隨機選擇轉輪結果
+        function getRandomResult() {
+            let result = [];
+            // 計算三個7的機率
+            const sevenSevenSevenChance = 0.0001; // 0.01%
+            const random = Math.random();
+
+            if (random < sevenSevenSevenChance) {
+                result = ['7️⃣', '7️⃣', '7️⃣']; // 強制三個7
+            } else {
+                for (let i = 0; i < 3; i++) {
+                    result.push(items[Math.floor(Math.random() * items.length)]);
+                }
+            }
+            return result;
+        }
+
+        // 檢查獲勝條件並計算分數
+        function checkWin(results) {
+            const resultString = results.join('');
+            let winScore = 0;
+            let winMessage = '很抱歉，沒有中獎。';
+            let won = false;
+
+            // 檢查完全匹配
+            for (const condition in winConditions) {
+                if (winConditions[condition].partial === undefined || winConditions[condition].partial === false) {
+                    if (resultString === condition) {
+                        winScore = winConditions[condition].score;
+                        winMessage = winConditions[condition].message;
+                        won = true;
+                        break;
+                    }
+                }
+            }
+
+            // 如果沒有完全匹配，檢查部分匹配（如兩個7，一個7）
+            if (!won) {
+                if (results.filter(item => item === '7️⃣').length === 2) {
+                    winScore = winConditions['7️⃣7️⃣'].score;
+                    winMessage = winConditions['7️⃣7️⃣'].message;
+                    won = true;
+                } else if (results.includes('7️⃣')) {
+                    winScore = winConditions['7️⃣'].score;
+                    winMessage = winConditions['7️⃣'].message;
+                    won = true;
+                }
+            }
+
+            return { winScore, winMessage, won };
+        }
+
+        // 開始遊戲旋轉
+        spinButton.addEventListener('click', async () => {
+            if (isSpinning) return;
+
+            const actualSpinCost = baseSpinCost * currentBetMultiplier;
+            if (currentScore < actualSpinCost) {
+                showMessageBox(`您的分數不足！需要 ${actualSpinCost} 分才能旋轉。`);
+                return;
+            }
+
+            // 確保 Tone.js 音頻上下文已啟動 (用戶互動後)
+            if (Tone.context.state !== 'running') {
+                await Tone.start();
+            }
+
+            currentScore -= actualSpinCost;
+            scoreDisplay.textContent = currentScore;
+            resultMessage.textContent = '旋轉中...';
+            isSpinning = true;
+            spinButton.disabled = true; // 旋轉時禁用旋轉按鈕
+            betButtons.forEach(button => button.disabled = true); // 旋轉時禁用壓注倍數按鈕
+            reels.forEach(reel => {
+                reel.classList.remove('glow'); // 移除可能存在的發光效果
+                reel.classList.remove('shake'); // 移除可能存在的搖晃效果
+            });
+
+            playSpinStartSound(); // 播放旋轉開始音效
+
+            const finalResults = getRandomResult(); // 獲取最終結果
+            console.log("Final Results:", finalResults); // 用於調試
+
+            // 使用 Promise.all 等待所有轉輪停止
+            // 調整每個轉輪的旋轉時間，確保效果明顯且有層次感
+            await Promise.all([
+                spinReel(reels[0], finalResults[0], 2500), // 第一個轉輪 2.5 秒
+                spinReel(reels[1], finalResults[1], 3500), // 第二個轉輪 3.5 秒
+                spinReel(reels[2], finalResults[2], 4500)  // 第三個轉輪 4.5 秒
+            ]);
+
+            isSpinning = false;
+            spinButton.disabled = false; // 旋轉結束後啟用旋轉按鈕
+            betButtons.forEach(button => button.disabled = false); // 旋轉結束後啟用壓注倍數按鈕
+
+            // 讀取中間的圖案作為結果
+            const middleItems = reels.map(reel => {
+                const reelStrip = reel.querySelector('.reel-strip');
+                return reelStrip.children[1].textContent; 
+            });
+
+            const { winScore, winMessage, won } = checkWin(middleItems); // Use middleItems for checking win
+            const finalWinAmount = winScore * currentBetMultiplier;
+            currentScore += finalWinAmount;
+            scoreDisplay.textContent = currentScore;
+
+            if (won) {
+                resultMessage.textContent = `${winMessage} 您贏得了 +${finalWinAmount} 分！`;
+                reels.forEach(reel => reel.classList.add('glow'));
+                playWinSound(); // 播放中獎音效
+            } else {
+                resultMessage.textContent = `很抱歉，沒有中獎。本次花費 ${actualSpinCost} 分。`;
+                playLoseSound(); // 播放未中獎音效
+                reels.forEach(reel => reel.classList.add('shake')); // 添加搖晃動畫
+            }
+            
+            // 短暫延遲後移除發光/搖晃效果
+            setTimeout(() => {
+                reels.forEach(reel => {
+                    reel.classList.remove('glow');
+                    reel.classList.remove('shake');
+                });
+            }, 1500); // 動畫持續時間 + 緩衝
+        });
+
+        // 壓注倍數按鈕事件監聽器
+        betButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // 移除所有按鈕的 active 樣式
+                betButtons.forEach(btn => btn.classList.remove('active'));
+                // 為當前點擊的按鈕添加 active 樣式
+                button.classList.add('active');
+                // 更新當前壓注倍數
+                currentBetMultiplier = parseInt(button.dataset.multiplier);
+            });
+        });
+
+        // 頁面載入時初始化
+        document.addEventListener('DOMContentLoaded', initializeReels);
+    </script>
+</body>
+</html>
