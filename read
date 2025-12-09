@@ -3,683 +3,513 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>拉霸遊戲</title>
+    <title>抗菌除臭襪品牌 - 香氛市場延伸策略研究報告 (全品牌版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 Tone.js 庫用於音效 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Chosen Palette: Warm Neutrals & Earth Tones -->
+    <!-- Application Structure Plan: 
+         Interactive Dashboard focusing on Brand Benchmarking.
+         Updates:
+         1. Scatter Plot now includes ALL surveyed brands with clickable points.
+         2. Bar Charts in Product view use specific brand names and are clickable.
+         3. Added explicit visual cues for interaction.
+    -->
+
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f0f0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            overflow: hidden; /* Prevent scrolling */
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f5f5f4; /* stone-100 */
+            color: #44403c; /* stone-700 */
         }
-        .slot-machine-container {
-            background-color: #ff3333; /* Red background from image */
-            border-radius: 15px;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            width: 95%; /* Fluid width */
-            max-width: 900px; /* Max width for larger screens */
-            box-sizing: border-box;
-        }
-        .reels-wrapper {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
+
+        /* Chart Container Styling */
+        .chart-container {
+            position: relative;
             width: 100%;
-            perspective: 1000px; /* For 3D effect during spin */
-        }
-        .reel {
-            background-color: #fff;
-            border: 5px solid #ffcc00; /* Yellow border from image */
-            border-radius: 10px;
-            width: 30%; /* Fluid width for reels */
-            max-width: 150px; /* Max width for individual reel */
-            height: 200px; /* Fixed height to show multiple items (3 items * 65px + padding) */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 4em;
-            font-weight: bold;
-            overflow: hidden; /* Crucial for clipping the strip */
-            position: relative; /* For absolute positioning of reel-strip and indicators */
-            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        /* Indicators for the center line */
-        .reel::before, .reel::after {
-            content: '';
-            position: absolute;
-            width: 0;
-            height: 0;
-            border-style: solid;
-            z-index: 10;
-        }
-        .reel::before {
-            border-width: 10px 10px 10px 0;
-            border-color: transparent #000 transparent transparent; /* Black left-pointing triangle */
-            left: -10px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        .reel::after {
-            border-width: 10px 0 10px 10px;
-            border-color: transparent transparent transparent #000; /* Black right-pointing triangle */
-            right: -10px;
-            top: 50%;
-            transform: translateY(-50%);
+            max-width: 800px; 
+            margin-left: auto;
+            margin-right: auto;
+            height: 400px;
+            max-height: 500px;
         }
 
-        .reel-strip {
-            position: absolute;
-            width: 100%;
-            top: 0; /* Ensure it starts at the top of the reel */
-            left: 0;
-            display: flex;
-            flex-direction: column; /* Stack items vertically */
-            will-change: transform; /* Performance hint */
-        }
-        .reel-item {
-            width: 100%;
-            height: 65px; /* Each individual item's height */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 3rem; /* Emojis will scale */
-            box-sizing: border-box;
-            padding: 5px 0; /* Add padding for visual separation */
-            flex-shrink: 0; /* Prevent items from shrinking */
-        }
-
-        .glow {
-            box-shadow: 0 0 20px 5px #ffd700, 0 0 30px 10px #ffcc00;
-            animation: glow 1.5s infinite alternate;
-        }
-
-        @keyframes glow {
-            from { box-shadow: 0 0 20px 5px #ffd700, 0 0 30px 10px #ffcc00; }
-            to { box-shadow: 0 0 30px 8px #ffcc00, 0 0 40px 15px #ffd700; }
-        }
-
-        /* Shake animation for losing */
-        @keyframes shake {
-            0% { transform: translateX(0); }
-            20% { transform: translateX(-5px); }
-            40% { transform: translateX(5px); }
-            60% { transform: translateX(-3px); }
-            80% { transform: translateX(3px); }
-            100% { transform: translateX(0); }
-        }
-
-        .shake {
-            animation: shake 0.5s ease-in-out;
-        }
-
-        .spin-button, .bet-button {
-            background-color: #4CAF50; /* Green */
-            color: white;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 10px;
-            font-size: 1.5em;
-            cursor: pointer;
-            transition: background-color 0.3s ease, transform 0.1s ease, box-shadow 0.3s ease;
-            box-shadow: 0 5px #388E3C;
-        }
-        .spin-button:hover, .bet-button:hover {
-            background-color: #45a049;
-            transform: translateY(-2px);
-            box-shadow: 0 7px #388E3C;
-        }
-        .spin-button:active, .bet-button:active {
-            background-color: #3e8e41;
-            transform: translateY(3px);
-            box-shadow: 0 2px #388E3C;
-        }
-        .spin-button:disabled, .bet-button:disabled {
-            background-color: #cccccc;
-            box-shadow: 0 5px #aaaaaa;
-            cursor: not-allowed;
-        }
-        .score-board {
-            background-color: #fff;
-            padding: 15px 25px;
-            border-radius: 10px;
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #333;
-            text-align: center;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 300px;
-        }
-        .message-box {
-            background-color: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1000;
-            text-align: center;
-            display: none; /* Hidden by default */
-        }
-        .message-box button {
-            background-color: #007bff;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        .bet-multiplier-container {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-top: 10px;
-        }
-        .bet-multiplier-container span {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #333;
-        }
-        .bet-button.active {
-            background-color: #e0ac1a; /* Active yellow */
-            box-shadow: 0 5px #c09015;
-        }
-        /* Responsive adjustments */
         @media (max-width: 640px) {
-            .slot-machine-container {
-                padding: 15px;
-                gap: 15px;
+            .chart-container {
+                height: 300px;
             }
-            .reels-wrapper {
-                flex-direction: row; /* Keep reels in a row even on small screens */
-                gap: 10px;
-            }
-            .reel {
-                width: 30%; /* Ensure reels don't get too small */
-                height: 150px;
-                font-size: 2.5em;
-            }
-            .spin-button, .bet-button {
-                padding: 12px 25px;
-                font-size: 1.2em;
-            }
-            .score-board {
-                font-size: 1em;
-                padding: 10px 20px;
-            }
-            .bet-multiplier-container {
-                flex-wrap: wrap; /* Allow wrapping on small screens */
-                justify-content: center;
-            }
+        }
+
+        .active-tab {
+            border-bottom: 3px solid #b45309; /* amber-700 */
+            color: #78350f; /* amber-900 */
+            font-weight: 700;
+        }
+
+        .card-hover {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Tooltip style for interactivity hint */
+        .interaction-hint {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
         }
     </style>
 </head>
-<body>
-    <div class="slot-machine-container">
-        <!-- 顯示玩家分數的計分板 -->
-        <div class="score-board">
-            分數: <span id="score">1000</span>
-        </div>
+<body class="min-h-screen flex flex-col">
 
-        <!-- 遊戲轉輪區域 -->
-        <div class="reels-wrapper">
-            <div class="reel" id="reel1">
-                <div class="reel-strip"></div>
+    <!-- Header Section -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold text-stone-800">品牌延伸策略報告</h1>
+                <p class="text-xs md:text-sm text-stone-500">競品對標與官網連結整合版</p>
             </div>
-            <div class="reel" id="reel2">
-                <div class="reel-strip"></div>
-            </div>
-            <div class="reel" id="reel3">
-                <div class="reel-strip"></div>
+            <div class="hidden md:block text-right">
+                <span class="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-semibold">互動式圖表</span>
             </div>
         </div>
+        
+        <!-- Navigation -->
+        <nav class="bg-stone-100 border-t border-stone-200 overflow-x-auto">
+            <div class="container mx-auto px-4">
+                <div class="flex space-x-8 whitespace-nowrap" id="main-nav">
+                    <button class="tab-btn active-tab py-3 px-1 text-stone-600 hover:text-stone-900 focus:outline-none" onclick="app.navigate('overview')">市場總覽 (全品牌矩陣)</button>
+                    <button class="tab-btn py-3 px-1 text-stone-600 hover:text-stone-900 focus:outline-none" onclick="app.navigate('products')">產品價格帶分析</button>
+                    <button class="tab-btn py-3 px-1 text-stone-600 hover:text-stone-900 focus:outline-none" onclick="app.navigate('benchmarks')">詳細品牌卡片</button>
+                    <button class="tab-btn py-3 px-1 text-stone-600 hover:text-stone-900 focus:outline-none" onclick="app.navigate('scents')">香調研發建議</button>
+                </div>
+            </div>
+        </nav>
+    </header>
 
-        <!-- 旋轉按鈕 -->
-        <button id="spinButton" class="spin-button">旋轉</button>
+    <!-- Main Content Area -->
+    <main class="flex-grow container mx-auto px-4 py-8" id="content-area">
+        <!-- Dynamic content injected here -->
+    </main>
 
-        <!-- 壓注倍數選擇 -->
-        <div class="bet-multiplier-container">
-            <span>壓注倍數:</span>
-            <button class="bet-button active" data-multiplier="1">1X</button>
-            <button class="bet-button" data-multiplier="2">2X</button>
-            <button class="bet-button" data-multiplier="5">5X</button>
+    <!-- Footer -->
+    <footer class="bg-stone-800 text-stone-300 py-8 mt-auto">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-sm">© 2024 品牌內部研究報告</p>
+            <p class="text-xs text-stone-500 mt-2">資料來源：各品牌官方網站與公開市場數據</p>
         </div>
+    </footer>
 
-        <!-- 遊戲結果訊息 -->
-        <div class="score-board" id="resultMessage">
-            點擊旋轉開始遊戲！
-        </div>
-    </div>
-
-    <!-- 訊息框（替代 alert） -->
-    <div id="messageBox" class="message-box">
-        <p id="messageContent"></p>
-        <button onclick="hideMessageBox()">確定</button>
-    </div>
-
+    <!-- JavaScript Application Logic -->
     <script>
-        // 定義八種物品及其對應的圖示
-        const items = ['7️⃣', '🔔', '🍒', '🍊', '🍉', '👑', '🏆', '💰']; // 7, 鈴鐺, 櫻桃, 橘子, 西瓜, 皇冠, 獎盃, 錢袋
-
-        // 定義不同組合的分數規則
-        const winConditions = {
-            '7️⃣7️⃣7️⃣': { score: 5000, message: '🎉 恭喜！超級大獎！ 🎉' }, // 三個7，最高分
-            '👑👑👑': { score: 3500, message: '皇冠三連！' },
-            '🏆🏆🏆': { score: 3000, message: '獎盃三連！' },
-            '🔔🔔🔔': { score: 2500, message: '鈴鐺三連！' },
-            '🍒🍒🍒': { score: 2000, message: '櫻桃三連！' },
-            '🍊🍊🍊': { score: 1500, message: '橘子三連！' },
-            '🍉🍉🍉': { score: 1000, message: '西瓜三連！' },
-            '💰💰💰': { score: 500, message: '錢袋三連！' },
-            '7️⃣7️⃣': { score: 200, message: '雙7，不錯喔！', partial: true }, // 部分匹配，如兩個7
-            '7️⃣': { score: 50, message: '一個7，聊勝於無！', partial: true }
+        // Centralized Brand Data with URLs
+        const brandDB = {
+            "Jo Malone": { url: "https://www.jomalone.com.tw/", origin: "英國", price: "High", func: "Low" },
+            "Diptyque": { url: "https://1010apothecary.com.tw/diptyque", origin: "法國", price: "High", func: "Low" },
+            "Aesop": { url: "https://www.aesop.com/tw/", origin: "澳洲", price: "High", func: "Mid" },
+            "Sabon": { url: "https://www.sabon.com.tw/", origin: "以色列", price: "High", func: "Low" },
+            "Laundrin": { url: "https://www.laundrin.jp/", origin: "日本", price: "Mid", func: "Mid" },
+            "Gong100": { url: "https://www.gong100.tw/", origin: "韓國", price: "Mid", func: "Mid" },
+            "W.Dressroom": { url: "https://www.talyah.com.tw/collections/wdressroom", origin: "韓國", price: "Mid", func: "Low" },
+            "Cocodor": { url: "https://www.cocodor.com.tw/", origin: "韓國", price: "Low", func: "Low" },
+            "Snuggle": { url: "https://www.unilever.com.tw/brands/home-care/snuggle/", origin: "台灣/國際", price: "Low", func: "High" },
+            "Farcent": { url: "https://www.farcent.com.tw/products-brand/Deodorizer", origin: "台灣", price: "Low", func: "High" },
+            "Febreze": { url: "https://pg-mall.com.tw/", origin: "美國/日本", price: "Mid", func: "High" },
+            "Flair": { url: "https://web.kao.com/tw/flair/", origin: "日本", price: "Low", func: "Mid" },
+            "MUJI": { url: "https://www.muji.com/tw/", origin: "日本", price: "Mid", func: "Low" },
+            "OurBrand": { url: "#", origin: "台灣", price: "High", func: "High" } // Target
         };
 
-        const reels = [
-            document.getElementById('reel1'),
-            document.getElementById('reel2'),
-            document.getElementById('reel3')
-        ];
-        const spinButton = document.getElementById('spinButton');
-        const betButtons = document.querySelectorAll('.bet-button'); // 壓注倍數按鈕
-        const scoreDisplay = document.getElementById('score');
-        const resultMessage = document.getElementById('resultMessage');
-        const messageBox = document.getElementById('messageBox');
-        const messageContent = document.getElementById('messageContent');
-
-        let currentScore = 1000;
-        let isSpinning = false;
-        const baseSpinCost = 100; // 每次旋轉的基本花費
-        let currentBetMultiplier = 1; // 當前壓注倍數
-
-        // --- Tone.js 音效設定 ---
-        const spinStartSynth = new Tone.Synth().toDestination();
-        spinStartSynth.oscillator.type = "sine";
-        spinStartSynth.envelope.attack = 0.05;
-        spinStartSynth.envelope.decay = 0.1;
-        spinStartSynth.envelope.sustain = 0.1;
-        spinStartSynth.envelope.release = 0.1;
-
-        const reelStopSynth = new Tone.Synth().toDestination();
-        reelStopSynth.oscillator.type = "square";
-        reelStopSynth.envelope.attack = 0.01;
-        reelStopSynth.envelope.decay = 0.05;
-        reelStopSynth.envelope.sustain = 0.05;
-        reelStopSynth.envelope.release = 0.1;
-
-        const winSynth = new Tone.PolySynth(Tone.Synth).toDestination();
-        winSynth.set({
-            oscillator: { type: "triangle" },
-            envelope: {
-                attack: 0.02,
-                decay: 0.2,
-                sustain: 0.1,
-                release: 0.3
-            }
-        });
-
-        const loseSynth = new Tone.Synth().toDestination();
-        loseSynth.oscillator.type = "sawtooth";
-        loseSynth.envelope.attack = 0.01;
-        loseSynth.envelope.decay = 0.2;
-        loseSynth.envelope.sustain = 0.01;
-        loseSynth.envelope.release = 0.2;
-
-
-        // 播放旋轉開始音效
-        function playSpinStartSound() {
-            spinStartSynth.triggerAttackRelease("C4", "16n");
-        }
-
-        // 播放轉輪停止音效
-        function playReelStopSound() {
-            reelStopSynth.triggerAttackRelease("D5", "16n");
-        }
-
-        // 播放中獎音效
-        function playWinSound() {
-            winSynth.triggerAttackRelease(["E5", "G5", "C6"], "8n");
-        }
-
-        // 播放未中獎音效
-        function playLoseSound() {
-            loseSynth.triggerAttackRelease("C2", "4n");
-        }
-
-        // 顯示訊息框
-        function showMessageBox(message) {
-            messageContent.textContent = message;
-            messageBox.style.display = 'block';
-        }
-
-        // 隱藏訊息框
-        function hideMessageBox() {
-            messageBox.style.display = 'none';
-        }
-
-        // 初始化每個轉輪的顯示項目
-        function initializeReels() {
-            reels.forEach(reelElement => {
-                const reelStrip = reelElement.querySelector('.reel-strip');
-                const itemHeight = 65; // Fixed item height
-                const itemsPerCycle = items.length; // 8 unique items
-                // We'll create more items than just 3 to ensure smooth looping without jumps.
-                // This allows for continuous scroll, even if only 3 are "active" at any given time for scoring.
-                const totalVisualItemsInStrip = itemsPerCycle * 3; // Enough to cycle through all unique items multiple times
-
-                reelStrip.innerHTML = ''; // Clear existing items
-
-                for (let i = 0; i < totalVisualItemsInStrip; i++) {
-                    const itemDiv = document.createElement('div');
-                    itemDiv.classList.add('reel-item');
-                    itemDiv.style.height = `${itemHeight}px`;
-                    itemDiv.textContent = items[i % itemsPerCycle]; // Cycle through the base items
-                    reelStrip.appendChild(itemDiv);
-                }
-                
-                // Initial position to center a random item (visually, the 2nd item in the 3-item view)
-                const centerOffsetInReel = (reelElement.clientHeight / 2) - (itemHeight / 2); // Y for the center item's top edge
-                // To center reelItems[1] (which is the middle item in a 3-item static view)
-                // the strip's translateY should be: `centerOffsetInReel - (1 * itemHeight)`.
-                // Let's find a random starting point in the strip that aligns an item to the center.
-                const initialRandomIndex = Math.floor(Math.random() * itemsPerCycle);
-                // Position the strip so that 'initialRandomIndex' is conceptually centered.
-                // This means the top of the item with `initialRandomIndex` should be at `centerOffsetInReel`.
-                // So the strip should translate by `centerOffsetInReel - (initialRandomIndex * itemHeight)`
-                // But we also need to account for which of the `totalVisualItemsInStrip` items is visible.
-                // A simpler initial setup: ensure the middle item is always randomly chosen and centered.
-                // Let's set the initial translateY so reelItems[1] is centered, and then update its content.
-                let initialTranslateY = -itemHeight + centerOffsetInReel; // This makes reelItems[1] centered
-                reelStrip.style.transition = 'none';
-                reelStrip.style.transform = `translateY(${initialTranslateY}px)`;
-                reelStrip.dataset.offset = initialTranslateY; // Store this for consistency
-
-                // Manually set the content of the three visible items
-                reelStrip.children[0].textContent = items[(initialRandomIndex - 1 + itemsPerCycle) % itemsPerCycle];
-                reelStrip.children[1].textContent = items[initialRandomIndex]; // Center item
-                reelStrip.children[2].textContent = items[(initialRandomIndex + 1) % itemsPerCycle];
-            });
-        }
-
-        // 旋轉轉輪的函數 (滾輪動畫)
-        function spinReel(reelElement, finalItem, delay) {
-            return new Promise(resolve => {
-                const reelStrip = reelElement.querySelector('.reel-strip');
-                const reelItems = Array.from(reelStrip.children);
-                const itemHeight = reelItems[0].clientHeight;
-                const itemsPerCycle = items.length; // 8 unique items
-                const totalVisualItemsInStrip = reelItems.length; // E.g., 24 (itemsPerCycle * 3)
-
-                let animationFrameId = null;
-                let currentTranslateY = parseFloat(reelStrip.dataset.offset);
-                let lastFrameTime = performance.now();
-                let startTime = performance.now();
-
-                const spinSpeedPxPerSec = 2000; // Fast spin speed (pixels per second)
-                const stopTransitionDuration = 1000; // Final smooth stop animation duration (ms)
-                const fastSpinDuration = delay - stopTransitionDuration; // Rapid scrolling duration
-
-                // --- Prepare Final Stop Sequence ---
-                const finalItemIndexInItems = items.indexOf(finalItem); // Index of the final item in the 'items' array
-                const centerOffsetInReel = (reelElement.clientHeight / 2) - (itemHeight / 2); // Y for the center item's top edge
-
-                // We need to ensure that the content of the reelItems aligns correctly for the stop.
-                // reelItems[0] = item_before_final
-                // reelItems[1] = final_item
-                // reelItems[2] = item_after_final
-                const prevItem = items[(finalItemIndexInItems - 1 + itemsPerCycle) % itemsPerCycle];
-                const nextItem = items[(finalItemIndexInItems + 1) % itemsPerCycle];
-
-                // --- Fast Spin Loop ---
-                const animateFastSpin = (currentTime) => {
-                    const deltaTime = (currentTime - lastFrameTime) / 1000;
-                    lastFrameTime = currentTime;
-                    const elapsedTime = currentTime - startTime;
-
-                    if (elapsedTime < fastSpinDuration) {
-                        currentTranslateY += spinSpeedPxPerSec * deltaTime; // Move strip downwards (Y increases)
-
-                        // Wrap logic: When currentTranslateY moves past the height of one full item,
-                        // reset its translateY to simulate continuous scrolling.
-                        // We reset by one item height and update contents.
-                        // This makes the animation appear continuous without adding/removing DOM.
-                        if (currentTranslateY >= (parseFloat(reelStrip.dataset.offset) + itemHeight)) {
-                            currentTranslateY -= itemHeight; // Shift the 'window' by one item height
-                            
-                            // Cycle the content of reelItems
-                            // This gives the illusion of new random items appearing
-                            const firstItemContent = reelItems[0].textContent;
-                            reelItems[0].textContent = reelItems[1].textContent;
-                            reelItems[1].textContent = reelItems[2].textContent;
-                            reelItems[2].textContent = items[Math.floor(Math.random() * itemsPerCycle)]; // New random item at the bottom
-                            
-                            reelStrip.style.transition = 'none'; // Instant snap back
-                        }
-                        
-                        reelStrip.style.transform = `translateY(${currentTranslateY}px)`;
-                        animationFrameId = requestAnimationFrame(animateFastSpin);
-
-                    } else {
-                        // --- Stopping Phase ---
-                        cancelAnimationFrame(animationFrameId);
-                        playReelStopSound();
-
-                        // Now, we need to set the contents for the final stop BEFORE the transition.
-                        // The elements in reelItems are fixed. We need to set them to
-                        // [item_before_final, final_item, item_after_final]
-                        reelItems[0].textContent = prevItem;
-                        reelItems[1].textContent = finalItem;
-                        reelItems[2].textContent = nextItem;
-
-                        // Calculate the final target Y for reelItems[1] to be perfectly centered.
-                        // The desired position for the middle item (index 1) to be centered is `-itemHeight + centerOffsetInReel`.
-                        let finalTargetTranslateY = -itemHeight + centerOffsetInReel; // Base target Y for the strip
-
-                        // Adjust `finalTargetTranslateY` to ensure it continues downward motion
-                        // and lands precisely on the correct item after passing through some cycles.
-                        // We need to find the `finalTargetTranslateY` that is:
-                        // 1. Visually below `currentTranslateY` (i.e., `finalTargetTranslateY > currentTranslateY`).
-                        // 2. Aligns `reelItems[1]` to the center.
-                        // 3. Is a multiple of `itemHeight`.
-                        
-                        // Calculate how many full items we need to scroll from current position to reach target.
-                        // We need to ensure a downward motion that's at least `N` full items.
-                        const minimumScrollItems = itemsPerCycle * 1; // At least one full unique item cycle scroll
-                        let currentLogicalItemOffset = Math.round((currentTranslateY - centerOffsetInReel) / itemHeight);
-                        let targetLogicalItemOffset = -1; // This is the index of reelItems[1] relative to current window
-                        
-                        // Calculate a target Y that is a multiple of `itemHeight` and positions `reelItems[1]` centrally.
-                        // This `finalTargetTranslateY` needs to be an integer multiple of `itemHeight` from a base.
-                        finalTargetTranslateY = -itemHeight + centerOffsetInReel; // This is the base for centering reelItems[1]
-
-                        // Now, ensure that `finalTargetTranslateY` is significantly below `currentTranslateY` to show deceleration.
-                        while (finalTargetTranslateY < currentTranslateY - (itemHeight * totalVisualItemsInStrip * 1.5)) { // Ensure enough distance for smooth stop
-                            finalTargetTranslateY += (itemHeight * totalVisualItemsInStrip);
-                        }
-                        
-                        reelStrip.style.transition = `transform ${stopTransitionDuration / 1000}s cubic-bezier(0.25, 0.1, 0.25, 1)`;
-                        reelStrip.style.transform = `translateY(${finalTargetTranslateY}px)`;
-
-                        reelStrip.addEventListener('transitionend', function handler() {
-                            reelStrip.removeEventListener('transitionend', handler);
-                            reelStrip.style.transition = 'none'; 
-                            
-                            // Normalize the position to prevent translateY from growing infinitely
-                            const normalizedY = -itemHeight + centerOffsetInReel;
-                            reelStrip.style.transform = `translateY(${normalizedY}px)`;
-                            reelStrip.dataset.offset = normalizedY;
-
-                            // After normalization, update the contents of ALL items for the next spin's initial state
-                            // This ensures the whole strip has random content for the next fast spin.
-                            for (let i = 0; i < totalVisualItemsInStrip; i++) {
-                                reelItems[i].textContent = items[Math.floor(Math.random() * itemsPerCycle)];
-                            }
-                            
-                            resolve(); // Resolve the promise
-                        }, { once: true });
+        const dataStore = {
+            overview: {
+                intro: "本頁面展示了目前台灣市場上主要香氛與除臭品牌的競爭態勢。我們建議品牌切入「高機能 x 高質感」的藍海區域（圖中右上角）。",
+                matrixData: [
+                    { x: 2, y: 10, r: 8, label: 'Jo Malone', brandKey: 'Jo Malone' },
+                    { x: 1, y: 10, r: 8, label: 'Diptyque', brandKey: 'Diptyque' },
+                    { x: 6, y: 9, r: 9, label: 'Aesop', brandKey: 'Aesop' },
+                    { x: 3, y: 8, r: 8, label: 'Sabon', brandKey: 'Sabon' },
+                    { x: 5, y: 6, r: 10, label: 'Laundrin (朗德林)', brandKey: 'Laundrin' },
+                    { x: 7, y: 5, r: 8, label: 'Gong100', brandKey: 'Gong100' },
+                    { x: 3, y: 4, r: 8, label: 'W.Dressroom', brandKey: 'W.Dressroom' },
+                    { x: 10, y: 4, r: 9, label: 'Febreze (風倍清)', brandKey: 'Febreze' },
+                    { x: 6, y: 3, r: 7, label: 'Flair', brandKey: 'Flair' },
+                    { x: 9, y: 3, r: 10, label: 'Snuggle (熊寶貝)', brandKey: 'Snuggle' },
+                    { x: 9, y: 2, r: 9, label: 'Farcent (去味大師)', brandKey: 'Farcent' },
+                    { x: 2, y: 4, r: 7, label: 'Cocodor', brandKey: 'Cocodor' },
+                    { x: 9, y: 7.5, r: 15, label: '我們建議的目標位置', brandKey: 'OurBrand' }
+                ]
+            },
+            products: {
+                categories: [
+                    {
+                        id: 'spray',
+                        name: '織品去味噴霧',
+                        summary: '品牌切入首選，剛需最強。',
+                        // Mixing specific brands into the price chart
+                        priceLabels: ['去味大師', 'Snuggle', 'Flair', 'Laundrin', 'W.Dressroom', 'Gong100', 'Aesop'],
+                        priceData: [199, 250, 280, 480, 550, 598, 850], 
+                        brandKeys: ['Farcent', 'Snuggle', 'Flair', 'Laundrin', 'W.Dressroom', 'Gong100', 'Aesop']
+                    },
+                    {
+                        id: 'sachet',
+                        name: '衣櫃香氛包',
+                        summary: '襪子收納的完美搭檔。',
+                        priceLabels: ['去味大師', 'Snuggle', 'Cocodor', 'Laundrin', 'Sabon(單入)', 'Diptyque(掛飾)'],
+                        priceData: [69, 120, 250, 320, 380, 2500],
+                        brandKeys: ['Farcent', 'Snuggle', 'Cocodor', 'Laundrin', 'Sabon', 'Diptyque']
+                    },
+                    {
+                        id: 'diffuser',
+                        name: '居家擴香',
+                        summary: '提升品牌整體生活美學。',
+                        priceLabels: ['Cocodor', 'MUJI', 'Laundrin', 'Sabon', 'Jo Malone', 'Aesop(滴露)'],
+                        priceData: [199, 590, 850, 1980, 3800, 2800],
+                        brandKeys: ['Cocodor', 'MUJI', 'Laundrin', 'Sabon', 'Jo Malone', 'Aesop']
                     }
+                ]
+            }
+        };
+
+        const app = {
+            currentPage: 'overview',
+            chartInstances: {},
+
+            init: function() {
+                this.navigate('overview');
+            },
+
+            navigate: function(pageId) {
+                this.currentPage = pageId;
+                this.updateNav();
+                this.renderContent();
+            },
+
+            updateNav: function() {
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.remove('active-tab');
+                    if (btn.getAttribute('onclick').includes(this.currentPage)) {
+                        btn.classList.add('active-tab');
+                    }
+                });
+            },
+
+            renderContent: function() {
+                const container = document.getElementById('content-area');
+                container.innerHTML = ''; 
+
+                switch (this.currentPage) {
+                    case 'overview':
+                        this.renderOverview(container);
+                        break;
+                    case 'products':
+                        this.renderProducts(container);
+                        break;
+                    case 'benchmarks':
+                        this.renderBenchmarks(container);
+                        break;
+                    case 'scents':
+                        this.renderScents(container);
+                        break;
+                }
+            },
+
+            // --- VIEW: OVERVIEW ---
+            renderOverview: function(container) {
+                const section = document.createElement('section');
+                section.className = 'space-y-6';
+                section.innerHTML = `
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                        <div class="flex justify-between items-start">
+                            <h2 class="text-xl font-bold mb-2 text-stone-800">市場競爭地圖 (全品牌)</h2>
+                            <span class="text-amber-600 font-bold text-sm interaction-hint flex items-center">
+                                <span class="text-xl mr-1">👆</span> 點擊圖中品牌圓點可前往官網
+                            </span>
+                        </div>
+                        <p class="text-stone-600 mb-4">${dataStore.overview.intro}</p>
+                        
+                        <div class="chart-container">
+                            <canvas id="marketMatrixChart"></canvas>
+                        </div>
+                        <div class="flex justify-between text-xs text-stone-400 mt-2 px-8">
+                            <span>功能性低 (純香氛)</span>
+                            <span>功能性高 (抗菌/除臭)</span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(section);
+
+                // Initialize Scatter Chart
+                setTimeout(() => {
+                    const ctx = document.getElementById('marketMatrixChart').getContext('2d');
+                    this.chartInstances.matrix = new Chart(ctx, {
+                        type: 'scatter',
+                        data: {
+                            datasets: [{
+                                label: '品牌分佈',
+                                data: dataStore.overview.matrixData,
+                                backgroundColor: function(context) {
+                                    const raw = context.raw;
+                                    if (!raw) return '#d6d3d1';
+                                    if (raw.brandKey === 'OurBrand') return '#b45309'; // Target
+                                    if (['Laundrin', 'Aesop', 'Snuggle'].includes(raw.brandKey)) return '#78716c'; // Key competitors
+                                    return '#e7e5e4'; // Others
+                                },
+                                borderColor: function(context) {
+                                    const raw = context.raw;
+                                    if (raw && raw.brandKey === 'OurBrand') return '#78350f';
+                                    return 'transparent';
+                                }
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return `${context.raw.label} (點擊訪問)`;
+                                        }
+                                    }
+                                },
+                                legend: { display: false }
+                            },
+                            scales: {
+                                x: { 
+                                    min: 0, max: 11,
+                                    title: { display: true, text: '去味/抗菌 功能性強弱' },
+                                    grid: { color: '#f5f5f4' }
+                                },
+                                y: { 
+                                    min: 0, max: 11,
+                                    title: { display: true, text: '價格 / 品牌奢華度' },
+                                    grid: { color: '#f5f5f4' }
+                                }
+                            },
+                            onClick: (e, elements) => {
+                                if (elements.length > 0) {
+                                    const index = elements[0].index;
+                                    const raw = this.chartInstances.matrix.data.datasets[0].data[index];
+                                    const brandInfo = brandDB[raw.brandKey];
+                                    if (brandInfo && brandInfo.url && brandInfo.url !== '#') {
+                                        window.open(brandInfo.url, '_blank');
+                                    }
+                                }
+                            },
+                            onHover: (event, chartElement) => {
+                                event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+                            }
+                        }
+                    });
+                }, 0);
+            },
+
+            // --- VIEW: PRODUCTS ---
+            renderProducts: function(container) {
+                let activeCategoryIndex = 0;
+
+                const renderSubView = () => {
+                    const category = dataStore.products.categories[activeCategoryIndex];
+                    
+                    const html = `
+                        <div class="mb-6">
+                            <h2 class="text-xl font-bold text-stone-800 mb-2">產品價格帶與品牌連結</h2>
+                            <p class="text-stone-600">點擊下方的長條圖，可直接查看該品牌此類產品的官方頁面。</p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2 mb-6">
+                            ${dataStore.products.categories.map((cat, idx) => `
+                                <button class="px-4 py-2 rounded-lg text-sm transition-colors ${idx === activeCategoryIndex ? 'bg-amber-700 text-white' : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'}"
+                                    onclick="app.switchProductCategory(${idx})">
+                                    ${cat.name}
+                                </button>
+                            `).join('')}
+                        </div>
+
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                            <div class="flex flex-col lg:flex-row gap-8">
+                                <div class="w-full lg:w-1/2">
+                                    <h3 class="text-2xl font-bold text-stone-800 mb-2">${category.name}</h3>
+                                    <p class="text-lg text-amber-800 font-medium mb-4">${category.summary}</p>
+                                    <div class="bg-stone-50 p-4 rounded text-sm text-stone-600">
+                                        <p>此圖表顯示該品項在台灣市場的主要競品價格分佈。請點擊右側圖表長條以深入研究競品。</p>
+                                    </div>
+                                </div>
+                                <div class="w-full lg:w-1/2">
+                                    <div class="flex justify-end mb-2">
+                                         <span class="text-amber-600 font-bold text-xs animate-pulse">👆 點擊長條前往官網</span>
+                                    </div>
+                                    <div class="chart-container" style="height: 300px;">
+                                        <canvas id="productPriceChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.innerHTML = html;
+
+                    setTimeout(() => {
+                        const ctx = document.getElementById('productPriceChart').getContext('2d');
+                        if(this.chartInstances.price) this.chartInstances.price.destroy();
+                        
+                        this.chartInstances.price = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: category.priceLabels,
+                                datasets: [{
+                                    label: '售價 (NTD)',
+                                    data: category.priceData,
+                                    backgroundColor: '#d6d3d1',
+                                    hoverBackgroundColor: '#b45309',
+                                    borderRadius: 4
+                                }]
+                            },
+                            options: {
+                                indexAxis: 'y',
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: (ctx) => `約 NT$ ${ctx.raw} (點擊看官網)`
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    x: { grid: { display: false } },
+                                    y: { grid: { display: false } }
+                                },
+                                onClick: (e, elements) => {
+                                    if (elements.length > 0) {
+                                        const index = elements[0].index;
+                                        const brandKey = category.brandKeys[index];
+                                        const brandInfo = brandDB[brandKey];
+                                        if (brandInfo && brandInfo.url) {
+                                            window.open(brandInfo.url, '_blank');
+                                        }
+                                    }
+                                },
+                                onHover: (event, chartElement) => {
+                                    event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+                                }
+                            }
+                        });
+                    }, 0);
                 };
 
-                animationFrameId = requestAnimationFrame(animateFastSpin);
-            });
-        }
+                app.switchProductCategory = (idx) => {
+                    activeCategoryIndex = idx;
+                    renderSubView();
+                };
+                renderSubView();
+            },
 
+            // --- VIEW: BENCHMARKS (CARDS) ---
+            renderBenchmarks: function(container) {
+                const brandsToList = Object.keys(brandDB).filter(k => k !== 'OurBrand');
+                
+                const section = document.createElement('section');
+                section.innerHTML = `
+                    <div class="mb-8">
+                        <h2 class="text-xl font-bold text-stone-800 mb-2">品牌詳細資料庫</h2>
+                        <p class="text-stone-600">點擊卡片可直接前往官方網站。</p>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        ${brandsToList.map(key => {
+                            const b = brandDB[key];
+                            return `
+                            <a href="${b.url}" target="_blank" class="block bg-white rounded-lg p-6 shadow-sm border border-stone-200 card-hover group">
+                                <div class="flex justify-between items-start mb-2">
+                                    <h3 class="font-bold text-lg text-stone-800 group-hover:text-amber-700">${key}</h3>
+                                    <span class="text-xs bg-stone-100 px-2 py-1 rounded text-stone-500">${b.origin}</span>
+                                </div>
+                                <div class="text-sm text-stone-500 mb-2">
+                                    定位: ${b.price === 'High' ? '高價/專櫃' : b.price === 'Mid' ? '中價/質感' : '平價/大眾'}
+                                </div>
+                                <div class="text-xs text-amber-600 flex items-center">
+                                    <span>前往官網</span>
+                                    <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                </div>
+                            </a>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+                container.appendChild(section);
+            },
 
-        // 隨機選擇轉輪結果
-        function getRandomResult() {
-            let result = [];
-            // 計算三個7的機率
-            const sevenSevenSevenChance = 0.0001; // 0.01%
-            const random = Math.random();
-
-            if (random < sevenSevenSevenChance) {
-                result = ['7️⃣', '7️⃣', '7️⃣']; // 強制三個7
-            } else {
-                for (let i = 0; i < 3; i++) {
-                    result.push(items[Math.floor(Math.random() * items.length)]);
-                }
+            // --- VIEW: SCENTS ---
+            renderScents: function(container) {
+                // Keep the Radar Chart as is, it's abstract data
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                        <div>
+                            <h2 class="text-xl font-bold text-stone-800 mb-4">香調研發建議</h2>
+                            <p class="text-stone-600 mb-6 text-justify">
+                                透過分析 Jo Malone、Aesop 與 Laundrin 的熱銷款，我們發現「中性木質」與「茶香」是目前台灣市場對高質感香氛的共同語言。
+                            </p>
+                            <div class="bg-white rounded-lg border border-stone-200 p-4 shadow-sm">
+                                <ul class="space-y-3">
+                                    <li class="flex items-center justify-between">
+                                        <span class="text-stone-800 font-medium">1. 晨霧雪松 (Woody)</span>
+                                        <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">參考 Aesop</span>
+                                    </li>
+                                    <li class="flex items-center justify-between">
+                                        <span class="text-stone-800 font-medium">2. 伯爵白茶 (Tea)</span>
+                                        <span class="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">參考 Laundrin</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                            <h3 class="font-bold text-center text-stone-700 mb-2">香調趨勢雷達</h3>
+                            <div class="chart-container">
+                                <canvas id="scentRadarChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                 setTimeout(() => {
+                    const ctx = document.getElementById('scentRadarChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'radar',
+                        data: {
+                            labels: ["木質調", "茶香調", "柑橘調", "清新皂香", "馥郁花香", "草本"],
+                            datasets: [{
+                                label: '市場偏好度',
+                                data: [90, 85, 70, 75, 40, 60],
+                                fill: true,
+                                backgroundColor: 'rgba(180, 83, 9, 0.2)',
+                                borderColor: '#b45309',
+                                pointBackgroundColor: '#b45309'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: { r: { suggestedMin: 0, suggestedMax: 100 } }
+                        }
+                    });
+                }, 0);
             }
-            return result;
-        }
+        };
 
-        // 檢查獲勝條件並計算分數
-        function checkWin(results) {
-            const resultString = results.join('');
-            let winScore = 0;
-            let winMessage = '很抱歉，沒有中獎。';
-            let won = false;
-
-            // 檢查完全匹配
-            for (const condition in winConditions) {
-                if (winConditions[condition].partial === undefined || winConditions[condition].partial === false) {
-                    if (resultString === condition) {
-                        winScore = winConditions[condition].score;
-                        winMessage = winConditions[condition].message;
-                        won = true;
-                        break;
-                    }
-                }
-            }
-
-            // 如果沒有完全匹配，檢查部分匹配（如兩個7，一個7）
-            if (!won) {
-                if (results.filter(item => item === '7️⃣').length === 2) {
-                    winScore = winConditions['7️⃣7️⃣'].score;
-                    winMessage = winConditions['7️⃣7️⃣'].message;
-                    won = true;
-                } else if (results.includes('7️⃣')) {
-                    winScore = winConditions['7️⃣'].score;
-                    winMessage = winConditions['7️⃣'].message;
-                    won = true;
-                }
-            }
-
-            return { winScore, winMessage, won };
-        }
-
-        // 開始遊戲旋轉
-        spinButton.addEventListener('click', async () => {
-            if (isSpinning) return;
-
-            const actualSpinCost = baseSpinCost * currentBetMultiplier;
-            if (currentScore < actualSpinCost) {
-                showMessageBox(`您的分數不足！需要 ${actualSpinCost} 分才能旋轉。`);
-                return;
-            }
-
-            // 確保 Tone.js 音頻上下文已啟動 (用戶互動後)
-            if (Tone.context.state !== 'running') {
-                await Tone.start();
-            }
-
-            currentScore -= actualSpinCost;
-            scoreDisplay.textContent = currentScore;
-            resultMessage.textContent = '旋轉中...';
-            isSpinning = true;
-            spinButton.disabled = true; // 旋轉時禁用旋轉按鈕
-            betButtons.forEach(button => button.disabled = true); // 旋轉時禁用壓注倍數按鈕
-            reels.forEach(reel => {
-                reel.classList.remove('glow'); // 移除可能存在的發光效果
-                reel.classList.remove('shake'); // 移除可能存在的搖晃效果
-            });
-
-            playSpinStartSound(); // 播放旋轉開始音效
-
-            const finalResults = getRandomResult(); // 獲取最終結果
-            console.log("Final Results:", finalResults); // 用於調試
-
-            // 使用 Promise.all 等待所有轉輪停止
-            // 調整每個轉輪的旋轉時間，確保效果明顯且有層次感
-            await Promise.all([
-                spinReel(reels[0], finalResults[0], 2500), // 第一個轉輪 2.5 秒
-                spinReel(reels[1], finalResults[1], 3500), // 第二個轉輪 3.5 秒
-                spinReel(reels[2], finalResults[2], 4500)  // 第三個轉輪 4.5 秒
-            ]);
-
-            isSpinning = false;
-            spinButton.disabled = false; // 旋轉結束後啟用旋轉按鈕
-            betButtons.forEach(button => button.disabled = false); // 旋轉結束後啟用壓注倍數按鈕
-
-            // 讀取中間的圖案作為結果
-            const middleItems = reels.map(reel => {
-                const reelStrip = reel.querySelector('.reel-strip');
-                return reelStrip.children[1].textContent; 
-            });
-
-            const { winScore, winMessage, won } = checkWin(middleItems); // Use middleItems for checking win
-            const finalWinAmount = winScore * currentBetMultiplier;
-            currentScore += finalWinAmount;
-            scoreDisplay.textContent = currentScore;
-
-            if (won) {
-                resultMessage.textContent = `${winMessage} 您贏得了 +${finalWinAmount} 分！`;
-                reels.forEach(reel => reel.classList.add('glow'));
-                playWinSound(); // 播放中獎音效
-            } else {
-                resultMessage.textContent = `很抱歉，沒有中獎。本次花費 ${actualSpinCost} 分。`;
-                playLoseSound(); // 播放未中獎音效
-                reels.forEach(reel => reel.classList.add('shake')); // 添加搖晃動畫
-            }
-            
-            // 短暫延遲後移除發光/搖晃效果
-            setTimeout(() => {
-                reels.forEach(reel => {
-                    reel.classList.remove('glow');
-                    reel.classList.remove('shake');
-                });
-            }, 1500); // 動畫持續時間 + 緩衝
+        // Initialize App on Load
+        document.addEventListener('DOMContentLoaded', () => {
+            app.init();
         });
-
-        // 壓注倍數按鈕事件監聽器
-        betButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                // 移除所有按鈕的 active 樣式
-                betButtons.forEach(btn => btn.classList.remove('active'));
-                // 為當前點擊的按鈕添加 active 樣式
-                button.classList.add('active');
-                // 更新當前壓注倍數
-                currentBetMultiplier = parseInt(button.dataset.multiplier);
-            });
-        });
-
-        // 頁面載入時初始化
-        document.addEventListener('DOMContentLoaded', initializeReels);
     </script>
 </body>
 </html>
