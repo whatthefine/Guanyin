@@ -511,6 +511,6 @@
             app.init();
         });
     </script>
-<script type="module" src="/index.tsx"></script>
+
 </body>
 </html>
